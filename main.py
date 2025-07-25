@@ -1,5 +1,5 @@
 from ctranslate2.models import WhisperGenerationResultAsync
-from llama_cpp import Llama
+from llama_cpp import Llama, time
 import os
 from numpy._core.numeric import result_type
 import pyaudio
@@ -27,12 +27,6 @@ def record_voice():
   frames = []
   
   # os.system("clear")
-  print("Hold space to Start speaking...")
-  
-  # while (True):
-  #   if (keyboard.is_pressed('q')):
-  #     print("Recording stopped")
-  #     break
   
   while(keyboard.is_pressed('space')):
     data = stream.read(CHUNK)
@@ -62,7 +56,7 @@ def whisper_transcribe():
     
   return input_text
   
-def llama_model(input_text):
+def llama_model(input_text, message):
   llm = Llama(
     model_path="models/Llama-3.2-1B-Instruct-Q8_0.gguf",
     chat_format="llama-3",
@@ -71,19 +65,6 @@ def llama_model(input_text):
   )
 
   print("User: ", input_text)
-
-  message=[
-    {
-      "role": "system",
-      "content": (
-        "You are a concise, knowledgeable assistant. Keep answers short, precise, and on-topic. "
-        "Prioritize factual accuracy, and search when needed (assume internet access). "
-        "Avoid unnecessary styling or emojis. Rarely use bullet points, and never nest them. "
-        "Maintain a professional tone, use plain language, and subtle humor if appropriate. "
-        "You are currently chatting with a developer or technically inclined user."
-      )
-    }
-  ]
   
   message.append({
     "role": "user",
@@ -107,14 +88,33 @@ def llama_model(input_text):
   })
 
 def main():
+  message=[
+    {
+      "role": "system",
+      "content": (
+        "You are a concise, knowledgeable assistant. Keep answers short, precise, and on-topic. "
+        "Prioritize factual accuracy, and search when needed (assume internet access). "
+        "Avoid unnecessary styling or emojis. Rarely use bullet points, and never nest them. "
+        "Maintain a professional tone, use plain language, and subtle humor if appropriate. "
+        "You are currently chatting with a developer or technically inclined user."
+      )
+    }
+  ]
+  
+  print("Press space to speak")
   while (True):
-    record_voice()
-    # os.system("clear")
+    if (keyboard.is_pressed('q')):
+      return
+      
+    while (keyboard.is_pressed('space')):
+      record_voice()
+      # os.system("clear")
+      
+      input_text = whisper_transcribe()
+      # os.system("clear")
+      
+      llama_model(input_text, message)
     
-    input_text = whisper_transcribe()
-    # os.system("clear")
-    
-    
-    llama_model(input_text)
+    continue
 
 main()
