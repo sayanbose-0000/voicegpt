@@ -1,11 +1,15 @@
 from ctranslate2.models import WhisperGenerationResultAsync
 from llama_cpp import Llama, time
 import os
-from numpy._core.numeric import result_type
 import pyaudio
 import wave
 import keyboard
 from faster_whisper import WhisperModel
+import pyttsx3
+import threading
+
+def speak_async(text):
+  threading.Thread(target=pyttsx3.speak, args=(text,), daemon=True).start()
 
 def record_voice():
   CHUNK = 1024 
@@ -28,7 +32,7 @@ def record_voice():
   
   # os.system("clear")
   
-  while(keyboard.is_pressed('space')):
+  while(keyboard.is_pressed('up')):
     data = stream.read(CHUNK)
     frames.append(data)
   
@@ -44,11 +48,9 @@ def record_voice():
   wf.writeframes(b''.join(frames))
   wf.close()
   
-def whisper_transcribe():
-  model_path = "models/faster_whisper_tiny.en_model"
-  model = WhisperModel(model_path, device="cpu", compute_type="int8")
+def whisper_transcribe(whisper_model):
   
-  segments, info = model.transcribe("recordings/myaudio.wav", beam_size=5)
+  segments, info = whisper_model.transcribe("recordings/myaudio.wav", beam_size=5)
   
   input_text=""
   for segment in segments:
@@ -56,14 +58,7 @@ def whisper_transcribe():
     
   return input_text
   
-def llama_model(input_text, message):
-  llm = Llama(
-    model_path="models/Llama-3.2-1B-Instruct-Q8_0.gguf",
-    chat_format="llama-3",
-    verbose=False,
-    n_ctx=8192
-  )
-
+def llama_model(input_text, message, llm):
   print("User: ", input_text)
   
   message.append({
@@ -76,10 +71,19 @@ def llama_model(input_text, message):
   print("Assistant", end=": ")
   
   full_reply=""
+  buffer=""
+  count = 0
   for i in response:
     content = i["choices"][0]["delta"].get("content", "")
     print(content, end="", flush=True)
+    count += 1
     full_reply += content
+    
+    buffer += content
+    if count == 5:
+        speak_async(buffer)
+        buffer = ""
+        count = 0
     
   print()
   message.append({
@@ -88,6 +92,14 @@ def llama_model(input_text, message):
   })
 
 def main():
+  # Llama
+  llm = Llama(
+    model_path="models/Llama-3.2-1B-Instruct-IQ3_M.gguf",
+    chat_format="llama-3",
+    verbose=False,
+    n_ctx=2048
+  )
+
   message=[
     {
       "role": "system",
@@ -101,19 +113,22 @@ def main():
     }
   ]
   
-  print("Press space to speak")
+  # Whisper
+  whisper_model_path = "models/faster_whisper_tiny.en_model"
+  whisper_model = WhisperModel(whisper_model_path, device="cpu", compute_type="int8")
+
+  
+  print("Press up arrow to speak")
   while (True):
-    if (keyboard.is_pressed('q')):
-      return
       
-    while (keyboard.is_pressed('space')):
-      record_voice()
+    while (keyboard.is_pressed('up')):
+      record_voice() 
       # os.system("clear")
       
-      input_text = whisper_transcribe()
+      input_text = whisper_transcribe(whisper_model)
       # os.system("clear")
       
-      llama_model(input_text, message)
+      llama_model(input_text, message, llm)
     
     continue
 
