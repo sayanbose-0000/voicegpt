@@ -5,11 +5,25 @@ import pyaudio
 import wave
 import keyboard
 from faster_whisper import WhisperModel
-import pyttsx3
-import threading
+import edge_tts
+import asyncio
+import pygame
 
-def speak_async(text):
-  threading.Thread(target=pyttsx3.speak, args=(text,), daemon=True).start()
+async def speak(text):
+  file = "recordings/outputaudio.mp3"
+  tts = edge_tts.Communicate(text, voice="en-US-AndrewMultilingualNeural")
+  await tts.save(file)
+  
+  pygame.mixer.init()
+  pygame.mixer.music.load(file)
+  pygame.mixer.music.play()
+  
+  while pygame.mixer.music.get_busy():
+    pygame.time.wait(100)
+    
+  pygame.mixer.music.stop()
+  pygame.mixer.quit()
+
 
 def record_voice():
   CHUNK = 1024 
@@ -32,7 +46,7 @@ def record_voice():
   
   # os.system("clear")
   
-  while(keyboard.is_pressed('up')):
+  while(keyboard.is_pressed('down')):
     data = stream.read(CHUNK)
     frames.append(data)
   
@@ -79,17 +93,15 @@ def llama_model(input_text, message, llm):
     count += 1
     full_reply += content
     
-    buffer += content
-    if count == 5:
-        speak_async(buffer)
-        buffer = ""
-        count = 0
-    
   print()
   message.append({
     "role": "assistant",
     "content": full_reply
   })
+  
+  # Text to speech
+  # pyttsx3.speak(full_reply)
+  asyncio.run(speak(full_reply))
 
 def main():
   # Llama
@@ -118,18 +130,21 @@ def main():
   whisper_model = WhisperModel(whisper_model_path, device="cpu", compute_type="int8")
 
   
-  print("Press up arrow to speak")
+  os.system("clear")
+  
+  print("Press and hold down arrow to speak")
   while (True):
-      
-    while (keyboard.is_pressed('up')):
+    
+    while (keyboard.is_pressed('down')):
       record_voice() 
-      # os.system("clear")
       
       input_text = whisper_transcribe(whisper_model)
       # os.system("clear")
       
       llama_model(input_text, message, llm)
-    
+      print()
+      print("Press and hold down arrow to speak")
+      
     continue
 
 main()
