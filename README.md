@@ -1,6 +1,6 @@
 # VoiceGpt
 
-This is a voice to voice conversation AI
+This is a voice to voice conversation AI. We can speak to it, and it will reply using speech
 
 ## Default configs (You can change the code if you want other configs)
 
